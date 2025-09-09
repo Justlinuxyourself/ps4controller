@@ -6,7 +6,7 @@ This Arduino code is designed to work with the PS4 Car Controller Android app vi
 
 ### Required Components
 - Arduino Uno/Nano/Pro Mini
-- Motor Driver (L298N recommended)
+- Motor Driver (L298N recommended) OR direct motor control
 - 2x DC Motors (for left and right wheels)
 - Power supply for motors (6-12V depending on motors)
 - Jumper wires
@@ -14,16 +14,17 @@ This Arduino code is designed to work with the PS4 Car Controller Android app vi
 
 ### Wiring Diagram
 
+#### Option 1: With L298N Motor Driver
 ```
 Arduino Uno -> L298N Motor Driver
-Pin 3  -> ENA (Left motor speed control)
-Pin 5  -> IN1 (Left motor direction)
-Pin 6  -> IN2 (Left motor direction)
-Pin 9  -> IN3 (Right motor direction)
-Pin 10 -> IN4 (Right motor direction)
-Pin 11 -> ENB (Right motor speed control)
+Pin 5  -> IN1 (Left motor direction/speed - PWM)
+Pin 6  -> IN2 (Left motor direction/speed - PWM)
+Pin 9  -> IN3 (Right motor direction/speed - PWM)
+Pin 10 -> IN4 (Right motor direction/speed - PWM)
 GND    -> GND
 5V     -> VCC (Logic power)
+ENA    -> 5V (always enabled)
+ENB    -> 5V (always enabled)
 
 L298N -> Motors
 OUT1, OUT2 -> Left Motor
@@ -34,10 +35,20 @@ VIN -> Positive terminal (6-12V)
 GND -> Negative terminal
 ```
 
+#### Option 2: Direct Motor Control (Small Motors Only)
+```
+Arduino Uno -> Motors (via transistors/MOSFETs for larger motors)
+Pin 5  -> Left Motor Terminal 1 (PWM)
+Pin 6  -> Left Motor Terminal 2 (PWM)
+Pin 9  -> Right Motor Terminal 1 (PWM)
+Pin 10 -> Right Motor Terminal 2 (PWM)
+GND    -> Motor Ground/Common
+```
+
 ### Pin Configuration
-- **Left Motor Control**: Pins 5, 6 (direction), Pin 3 (speed/enable)
-- **Right Motor Control**: Pins 9, 10 (direction), Pin 11 (speed/enable)
-- **Status LED**: Pin 13 (built-in LED)
+- **Left Motor Control**: Pins 5, 6 (PWM analog control)
+- **Right Motor Control**: Pins 9, 10 (PWM analog control)
+- **No additional components required**
 
 ## Features
 
@@ -49,19 +60,23 @@ The Arduino receives single character commands via USB Serial:
 - `'R'` - Turn Right
 - `'S'` - Stop
 
+### Analog Speed Control
+- Uses PWM (analogWrite) for smooth speed control
+- No separate enable pins needed
+- Direct speed control on motor pins
+
 ### Safety Features
 - **Timeout Protection**: Motors stop automatically if no command received for 1 second
 - **Unknown Command Handling**: Stops motors for safety on unrecognized commands
-- **Status LED**: Indicates when commands are being received
 
 ### Speed Control
-- **Default Speed**: 200 (out of 255 maximum)
-- **Turn Speed**: 150 (75% of normal speed for better control)
+- **Default Speed**: 180 (out of 255 maximum)
+- **Turn Speed**: 120 (75% of normal speed for better control)
 - **Adjustable**: Speed can be modified in code or via serial commands
 
 ## Installation
 
-1. **Connect Hardware**: Wire the Arduino to motor driver and motors as shown above
+1. **Connect Hardware**: Wire the Arduino to motors (with or without motor driver)
 2. **Upload Code**: Open `car_controller.ino` in Arduino IDE and upload to your board
 3. **Test Connection**: Open Serial Monitor (9600 baud) to see status messages
 4. **Connect to App**: Use USB OTG cable to connect Arduino to Android phone
@@ -80,8 +95,8 @@ The Arduino receives single character commands via USB Serial:
 ### Adjusting Speed
 Modify these variables in the code:
 ```cpp
-int currentSpeed = 200;  // Normal driving speed (0-255)
-int turnSpeed = 150;     // Turning speed (0-255)
+int currentSpeed = 180;  // Normal driving speed (0-255)
+int turnSpeed = 120;     // Turning speed (0-255)
 ```
 
 ### Changing Pin Configuration
@@ -96,8 +111,8 @@ const int leftMotorPin2 = 6;   // Left motor direction pin 2
 If motors spin in wrong direction, swap the motor wires or modify the code:
 ```cpp
 // In moveForward() function, change HIGH/LOW values
-digitalWrite(leftMotorPin1, LOW);   // Was HIGH
-digitalWrite(leftMotorPin2, HIGH);  // Was LOW
+analogWrite(leftMotorPin1, 0);         // Was currentSpeed
+analogWrite(leftMotorPin2, currentSpeed); // Was 0
 ```
 
 ## Troubleshooting
@@ -107,6 +122,7 @@ digitalWrite(leftMotorPin2, HIGH);  // Was LOW
 - Verify wiring connections
 - Test motors directly with battery
 - Check Serial Monitor for error messages
+- Ensure PWM pins (5, 6, 9, 10) are used
 
 ### Car moves in wrong direction
 - Swap motor wire connections
@@ -116,6 +132,7 @@ digitalWrite(leftMotorPin2, HIGH);  // Was LOW
 - Check for loose connections
 - Ensure adequate power supply
 - Verify ground connections
+- Make sure motors can handle the PWM frequency
 
 ### No communication with app
 - Check USB OTG connection
@@ -141,11 +158,12 @@ SPEED:150
 ```
 This sets the speed to 150 (out of 255).
 
-### Status Feedback
+### Feedback
 The Arduino sends status messages back to the app:
 - Command acknowledgments
 - Error messages
 - Timeout notifications
+- Speed information
 
 ## Compatible Hardware
 
@@ -153,6 +171,7 @@ The Arduino sends status messages back to the app:
 - L298N Dual H-Bridge
 - L293D Motor Shield
 - TB6612FNG Motor Driver
+- Direct connection (small motors only)
 
 ### Tested Arduino Boards
 - Arduino Uno R3
@@ -165,4 +184,3 @@ The Arduino sends status messages back to the app:
 - **Arduino**: 5V via USB or external supply
 - **Motors**: 6-12V depending on motor specifications
 - **Current**: Ensure motor driver can handle your motor current draw
-- **Recommended**: Use separate power supply for motors, not Arduino's 5V pin

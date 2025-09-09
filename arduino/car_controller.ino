@@ -2,7 +2,7 @@
   PS4 Arduino Car Controller
   Compatible with the PS4 Car Controller Android App
   
-  This code receives single character commands via USB Serial:
+  This code receives single character commands via USB Serial with analog speed control:
   'F' - Forward
   'B' - Backward
   'L' - Left
@@ -11,30 +11,23 @@
   
   Hardware connections:
   - Motor Driver (L298N or similar)
-  - Left Motor: pins 5, 6
-  - Right Motor: pins 9, 10
-  - Enable pins: 3, 11 (for speed control)
+  - Left Motor: pins 5, 6 (PWM for analog control)
+  - Right Motor: pins 9, 10 (PWM for analog control)
+  - No additional components needed
   
   Author: Arduino Car Controller
   Compatible with Android app via USB OTG
 */
 
-// Motor control pins
+// Motor control pins (PWM capable for analog control)
 const int leftMotorPin1 = 5;   // Left motor direction pin 1
 const int leftMotorPin2 = 6;   // Left motor direction pin 2
 const int rightMotorPin1 = 9;  // Right motor direction pin 1
 const int rightMotorPin2 = 10; // Right motor direction pin 2
 
-// Enable pins for speed control (PWM)
-const int leftMotorEnable = 3;  // Left motor speed control
-const int rightMotorEnable = 11; // Right motor speed control
-
-// Speed settings
-int currentSpeed = 200;  // Default speed (0-255)
-int turnSpeed = 150;     // Speed for turning (slightly slower)
-
-// Status LED (built-in)
-const int statusLED = 13;
+// Speed settings for analog control
+int currentSpeed = 180;  // Default speed (0-255)
+int turnSpeed = 120;     // Speed for turning (slightly slower)
 
 // Variables for command processing
 char receivedCommand = 'S';
@@ -45,29 +38,16 @@ void setup() {
   // Initialize serial communication
   Serial.begin(9600);
   
-  // Initialize motor control pins
+  // Initialize motor control pins (all PWM capable)
   pinMode(leftMotorPin1, OUTPUT);
   pinMode(leftMotorPin2, OUTPUT);
   pinMode(rightMotorPin1, OUTPUT);
   pinMode(rightMotorPin2, OUTPUT);
-  pinMode(leftMotorEnable, OUTPUT);
-  pinMode(rightMotorEnable, OUTPUT);
-  
-  // Initialize status LED
-  pinMode(statusLED, OUTPUT);
   
   // Start with motors stopped
   stopMotors();
   
-  // Blink LED to indicate ready
-  for(int i = 0; i < 3; i++) {
-    digitalWrite(statusLED, HIGH);
-    delay(200);
-    digitalWrite(statusLED, LOW);
-    delay(200);
-  }
-  
-  Serial.println("PS4 Arduino Car Controller Ready!");
+  Serial.println("PS4 Arduino Car Controller Ready! (Analog Control)");
   Serial.println("Waiting for commands...");
 }
 
@@ -76,9 +56,6 @@ void loop() {
   if (Serial.available() > 0) {
     receivedCommand = Serial.read();
     lastCommandTime = millis();
-    
-    // Turn on status LED when receiving commands
-    digitalWrite(statusLED, HIGH);
     
     // Process the command
     processCommand(receivedCommand);
@@ -92,7 +69,6 @@ void loop() {
   if (millis() - lastCommandTime > commandTimeout && receivedCommand != 'S') {
     stopMotors();
     receivedCommand = 'S';
-    digitalWrite(statusLED, LOW);
     Serial.println("Timeout - Motors stopped");
   }
   
@@ -125,7 +101,6 @@ void processCommand(char command) {
     case 'S':
     case 's':
       stopMotors();
-      digitalWrite(statusLED, LOW);
       break;
       
     default:
@@ -138,70 +113,64 @@ void processCommand(char command) {
 }
 
 void moveForward() {
-  // Left motor forward
-  digitalWrite(leftMotorPin1, HIGH);
-  digitalWrite(leftMotorPin2, LOW);
-  analogWrite(leftMotorEnable, currentSpeed);
+  // Left motor forward (analog control)
+  analogWrite(leftMotorPin1, currentSpeed);
+  analogWrite(leftMotorPin2, 0);
   
-  // Right motor forward
-  digitalWrite(rightMotorPin1, HIGH);
-  digitalWrite(rightMotorPin2, LOW);
-  analogWrite(rightMotorEnable, currentSpeed);
+  // Right motor forward (analog control)
+  analogWrite(rightMotorPin1, currentSpeed);
+  analogWrite(rightMotorPin2, 0);
   
-  Serial.println("Moving Forward");
+  Serial.print("Moving Forward - Speed: ");
+  Serial.println(currentSpeed);
 }
 
 void moveBackward() {
-  // Left motor backward
-  digitalWrite(leftMotorPin1, LOW);
-  digitalWrite(leftMotorPin2, HIGH);
-  analogWrite(leftMotorEnable, currentSpeed);
+  // Left motor backward (analog control)
+  analogWrite(leftMotorPin1, 0);
+  analogWrite(leftMotorPin2, currentSpeed);
   
-  // Right motor backward
-  digitalWrite(rightMotorPin1, LOW);
-  digitalWrite(rightMotorPin2, HIGH);
-  analogWrite(rightMotorEnable, currentSpeed);
+  // Right motor backward (analog control)
+  analogWrite(rightMotorPin1, 0);
+  analogWrite(rightMotorPin2, currentSpeed);
   
-  Serial.println("Moving Backward");
+  Serial.print("Moving Backward - Speed: ");
+  Serial.println(currentSpeed);
 }
 
 void turnLeft() {
-  // Left motor backward (or stopped)
-  digitalWrite(leftMotorPin1, LOW);
-  digitalWrite(leftMotorPin2, HIGH);
-  analogWrite(leftMotorEnable, turnSpeed);
+  // Left motor backward for turning (analog control)
+  analogWrite(leftMotorPin1, 0);
+  analogWrite(leftMotorPin2, turnSpeed);
   
-  // Right motor forward
-  digitalWrite(rightMotorPin1, HIGH);
-  digitalWrite(rightMotorPin2, LOW);
-  analogWrite(rightMotorEnable, turnSpeed);
+  // Right motor forward for turning (analog control)
+  analogWrite(rightMotorPin1, turnSpeed);
+  analogWrite(rightMotorPin2, 0);
   
-  Serial.println("Turning Left");
+  Serial.print("Turning Left - Speed: ");
+  Serial.println(turnSpeed);
 }
 
 void turnRight() {
-  // Left motor forward
-  digitalWrite(leftMotorPin1, HIGH);
-  digitalWrite(leftMotorPin2, LOW);
-  analogWrite(leftMotorEnable, turnSpeed);
+  // Left motor forward for turning (analog control)
+  analogWrite(leftMotorPin1, turnSpeed);
+  analogWrite(leftMotorPin2, 0);
   
-  // Right motor backward (or stopped)
-  digitalWrite(rightMotorPin1, LOW);
-  digitalWrite(rightMotorPin2, HIGH);
-  analogWrite(rightMotorEnable, turnSpeed);
+  // Right motor backward for turning (analog control)
+  analogWrite(rightMotorPin1, 0);
+  analogWrite(rightMotorPin2, turnSpeed);
   
-  Serial.println("Turning Right");
+  Serial.print("Turning Right - Speed: ");
+  Serial.println(turnSpeed);
 }
 
 void stopMotors() {
-  // Stop both motors
-  digitalWrite(leftMotorPin1, LOW);
-  digitalWrite(leftMotorPin2, LOW);
-  analogWrite(leftMotorEnable, 0);
+  // Stop both motors (analog control)
+  analogWrite(leftMotorPin1, 0);
+  analogWrite(leftMotorPin2, 0);
   
-  digitalWrite(rightMotorPin1, LOW);
-  digitalWrite(rightMotorPin2, LOW);
-  analogWrite(rightMotorEnable, 0);
+  analogWrite(rightMotorPin1, 0);
+  analogWrite(rightMotorPin2, 0);
   
   Serial.println("Motors Stopped");
 }
