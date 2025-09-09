@@ -10,24 +10,25 @@
   'S' - Stop
   
   Hardware connections:
-  - Motor Driver (L298N or similar)
-  - Left Motor: pins 5, 6 (PWM for analog control)
-  - Right Motor: pins 9, 10 (PWM for analog control)
+  - L9110 2-Channel Motor Driver
+  - Left Motor: pins 5, 6 (A-IA, A-IB)
+  - Right Motor: pins 9, 10 (B-IA, B-IB)
   - No additional components needed
   
   Author: Arduino Car Controller
   Compatible with Android app via USB OTG
 */
 
-// Motor control pins (PWM capable for analog control)
-const int leftMotorPin1 = 5;   // Left motor direction pin 1
-const int leftMotorPin2 = 6;   // Left motor direction pin 2
-const int rightMotorPin1 = 9;  // Right motor direction pin 1
-const int rightMotorPin2 = 10; // Right motor direction pin 2
+// L9110 Motor Driver pins (PWM capable for analog control)
+const int leftMotorA = 5;   // Left motor A-IA pin
+const int leftMotorB = 6;   // Left motor A-IB pin
+const int rightMotorA = 9;  // Right motor B-IA pin
+const int rightMotorB = 10; // Right motor B-IB pin
 
 // Speed settings for analog control
 int currentSpeed = 180;  // Default speed (0-255)
-int turnSpeed = 120;     // Speed for turning (slightly slower)
+int slowSpeed = 80;      // Slower speed for differential turning
+int fastSpeed = 200;     // Faster speed for differential turning
 
 // Variables for command processing
 char receivedCommand = 'S';
@@ -39,15 +40,15 @@ void setup() {
   Serial.begin(9600);
   
   // Initialize motor control pins (all PWM capable)
-  pinMode(leftMotorPin1, OUTPUT);
-  pinMode(leftMotorPin2, OUTPUT);
-  pinMode(rightMotorPin1, OUTPUT);
-  pinMode(rightMotorPin2, OUTPUT);
+  pinMode(leftMotorA, OUTPUT);
+  pinMode(leftMotorB, OUTPUT);
+  pinMode(rightMotorA, OUTPUT);
+  pinMode(rightMotorB, OUTPUT);
   
   // Start with motors stopped
   stopMotors();
   
-  Serial.println("PS4 Arduino Car Controller Ready! (Analog Control)");
+  Serial.println("PS4 Arduino Car Controller Ready! (L9110 + Differential Steering)");
   Serial.println("Waiting for commands...");
 }
 
@@ -113,64 +114,64 @@ void processCommand(char command) {
 }
 
 void moveForward() {
-  // Left motor forward (analog control)
-  analogWrite(leftMotorPin1, currentSpeed);
-  analogWrite(leftMotorPin2, 0);
+  // Both motors forward at same speed
+  analogWrite(leftMotorA, currentSpeed);
+  analogWrite(leftMotorB, 0);
   
-  // Right motor forward (analog control)
-  analogWrite(rightMotorPin1, currentSpeed);
-  analogWrite(rightMotorPin2, 0);
+  analogWrite(rightMotorA, currentSpeed);
+  analogWrite(rightMotorB, 0);
   
   Serial.print("Moving Forward - Speed: ");
   Serial.println(currentSpeed);
 }
 
 void moveBackward() {
-  // Left motor backward (analog control)
-  analogWrite(leftMotorPin1, 0);
-  analogWrite(leftMotorPin2, currentSpeed);
+  // Both motors backward at same speed
+  analogWrite(leftMotorA, 0);
+  analogWrite(leftMotorB, currentSpeed);
   
-  // Right motor backward (analog control)
-  analogWrite(rightMotorPin1, 0);
-  analogWrite(rightMotorPin2, currentSpeed);
+  analogWrite(rightMotorA, 0);
+  analogWrite(rightMotorB, currentSpeed);
   
   Serial.print("Moving Backward - Speed: ");
   Serial.println(currentSpeed);
 }
 
 void turnLeft() {
-  // Left motor backward for turning (analog control)
-  analogWrite(leftMotorPin1, 0);
-  analogWrite(leftMotorPin2, turnSpeed);
+  // Differential steering: Left motor slow forward, Right motor fast forward
+  analogWrite(leftMotorA, slowSpeed);
+  analogWrite(leftMotorB, 0);
   
-  // Right motor forward for turning (analog control)
-  analogWrite(rightMotorPin1, turnSpeed);
-  analogWrite(rightMotorPin2, 0);
+  analogWrite(rightMotorA, fastSpeed);
+  analogWrite(rightMotorB, 0);
   
-  Serial.print("Turning Left - Speed: ");
-  Serial.println(turnSpeed);
+  Serial.print("Turning Left - Left: ");
+  Serial.print(slowSpeed);
+  Serial.print(", Right: ");
+  Serial.println(fastSpeed);
 }
 
 void turnRight() {
-  // Left motor forward for turning (analog control)
-  analogWrite(leftMotorPin1, turnSpeed);
-  analogWrite(leftMotorPin2, 0);
+  // Differential steering: Left motor fast forward, Right motor slow forward
+  analogWrite(leftMotorA, fastSpeed);
+  analogWrite(leftMotorB, 0);
   
-  // Right motor backward for turning (analog control)
-  analogWrite(rightMotorPin1, 0);
-  analogWrite(rightMotorPin2, turnSpeed);
+  analogWrite(rightMotorA, slowSpeed);
+  analogWrite(rightMotorB, 0);
   
-  Serial.print("Turning Right - Speed: ");
-  Serial.println(turnSpeed);
+  Serial.print("Turning Right - Left: ");
+  Serial.print(fastSpeed);
+  Serial.print(", Right: ");
+  Serial.println(slowSpeed);
 }
 
 void stopMotors() {
-  // Stop both motors (analog control)
-  analogWrite(leftMotorPin1, 0);
-  analogWrite(leftMotorPin2, 0);
+  // Stop both motors
+  analogWrite(leftMotorA, 0);
+  analogWrite(leftMotorB, 0);
   
-  analogWrite(rightMotorPin1, 0);
-  analogWrite(rightMotorPin2, 0);
+  analogWrite(rightMotorA, 0);
+  analogWrite(rightMotorB, 0);
   
   Serial.println("Motors Stopped");
 }
@@ -179,7 +180,8 @@ void stopMotors() {
 void setSpeed(int speed) {
   if (speed >= 0 && speed <= 255) {
     currentSpeed = speed;
-    turnSpeed = speed * 0.75; // Turn speed is 75% of normal speed
+    slowSpeed = speed * 0.4;  // Slow wheel is 40% of normal speed
+    fastSpeed = speed * 0.9;  // Fast wheel is 90% of normal speed
     Serial.print("Speed set to: ");
     Serial.println(speed);
   }

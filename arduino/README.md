@@ -6,7 +6,7 @@ This Arduino code is designed to work with the PS4 Car Controller Android app vi
 
 ### Required Components
 - Arduino Uno/Nano/Pro Mini
-- Motor Driver (L298N recommended) OR direct motor control
+- L9110 2-Channel Motor Driver
 - 2x DC Motors (for left and right wheels)
 - Power supply for motors (6-12V depending on motors)
 - Jumper wires
@@ -14,41 +14,29 @@ This Arduino code is designed to work with the PS4 Car Controller Android app vi
 
 ### Wiring Diagram
 
-#### Option 1: With L298N Motor Driver
+#### L9110 2-Channel Motor Driver
 ```
-Arduino Uno -> L298N Motor Driver
-Pin 5  -> IN1 (Left motor direction/speed - PWM)
-Pin 6  -> IN2 (Left motor direction/speed - PWM)
-Pin 9  -> IN3 (Right motor direction/speed - PWM)
-Pin 10 -> IN4 (Right motor direction/speed - PWM)
+Arduino Uno -> L9110 Motor Driver
+Pin 5  -> A-IA (Left motor control A - PWM)
+Pin 6  -> A-IB (Left motor control B - PWM)
+Pin 9  -> B-IA (Right motor control A - PWM)
+Pin 10 -> B-IB (Right motor control B - PWM)
 GND    -> GND
-5V     -> VCC (Logic power)
-ENA    -> 5V (always enabled)
-ENB    -> 5V (always enabled)
+5V     -> VCC
 
-L298N -> Motors
-OUT1, OUT2 -> Left Motor
-OUT3, OUT4 -> Right Motor
+L9110 -> Motors
+OA+, OA- -> Left Motor
+OB+, OB- -> Right Motor
 
-L298N -> Power Supply
-VIN -> Positive terminal (6-12V)
+L9110 -> Power Supply
+VMS -> Positive terminal (2.5-12V)
 GND -> Negative terminal
 ```
 
-#### Option 2: Direct Motor Control (Small Motors Only)
-```
-Arduino Uno -> Motors (via transistors/MOSFETs for larger motors)
-Pin 5  -> Left Motor Terminal 1 (PWM)
-Pin 6  -> Left Motor Terminal 2 (PWM)
-Pin 9  -> Right Motor Terminal 1 (PWM)
-Pin 10 -> Right Motor Terminal 2 (PWM)
-GND    -> Motor Ground/Common
-```
-
 ### Pin Configuration
-- **Left Motor Control**: Pins 5, 6 (PWM analog control)
-- **Right Motor Control**: Pins 9, 10 (PWM analog control)
-- **No additional components required**
+- **Left Motor Control**: Pins 5, 6 (A-IA, A-IB)
+- **Right Motor Control**: Pins 9, 10 (B-IA, B-IB)
+- **L9110 2-Channel Motor Driver required**
 
 ## Features
 
@@ -61,9 +49,9 @@ The Arduino receives single character commands via USB Serial:
 - `'S'` - Stop
 
 ### Analog Speed Control
-- Uses PWM (analogWrite) for smooth speed control
-- No separate enable pins needed
-- Direct speed control on motor pins
+- Uses PWM (analogWrite) for smooth speed control on L9110
+- Differential steering for smooth turns
+- Speed differential creates natural turning motion
 
 ### Safety Features
 - **Timeout Protection**: Motors stop automatically if no command received for 1 second
@@ -71,12 +59,12 @@ The Arduino receives single character commands via USB Serial:
 
 ### Speed Control
 - **Default Speed**: 180 (out of 255 maximum)
-- **Turn Speed**: 120 (75% of normal speed for better control)
+- **Differential Turning**: Slow wheel at 40%, fast wheel at 90%
 - **Adjustable**: Speed can be modified in code or via serial commands
 
 ## Installation
 
-1. **Connect Hardware**: Wire the Arduino to motors (with or without motor driver)
+1. **Connect Hardware**: Wire the Arduino to L9110 motor driver and motors
 2. **Upload Code**: Open `car_controller.ino` in Arduino IDE and upload to your board
 3. **Test Connection**: Open Serial Monitor (9600 baud) to see status messages
 4. **Connect to App**: Use USB OTG cable to connect Arduino to Android phone
@@ -96,14 +84,15 @@ The Arduino receives single character commands via USB Serial:
 Modify these variables in the code:
 ```cpp
 int currentSpeed = 180;  // Normal driving speed (0-255)
-int turnSpeed = 120;     // Turning speed (0-255)
+int slowSpeed = 80;      // Slower wheel for turning (0-255)
+int fastSpeed = 200;     // Faster wheel for turning (0-255)
 ```
 
 ### Changing Pin Configuration
 Update the pin definitions at the top of the code:
 ```cpp
-const int leftMotorPin1 = 5;   // Left motor direction pin 1
-const int leftMotorPin2 = 6;   // Left motor direction pin 2
+const int leftMotorA = 5;   // Left motor A-IA pin
+const int leftMotorB = 6;   // Left motor A-IB pin
 // ... etc
 ```
 
@@ -111,8 +100,8 @@ const int leftMotorPin2 = 6;   // Left motor direction pin 2
 If motors spin in wrong direction, swap the motor wires or modify the code:
 ```cpp
 // In moveForward() function, change HIGH/LOW values
-analogWrite(leftMotorPin1, 0);         // Was currentSpeed
-analogWrite(leftMotorPin2, currentSpeed); // Was 0
+analogWrite(leftMotorA, 0);         // Was currentSpeed
+analogWrite(leftMotorB, currentSpeed); // Was 0
 ```
 
 ## Troubleshooting
@@ -156,7 +145,7 @@ The code includes optional speed control. Send commands like:
 ```
 SPEED:150
 ```
-This sets the speed to 150 (out of 255).
+This sets the speed to 150 and automatically adjusts differential speeds.
 
 ### Feedback
 The Arduino sends status messages back to the app:
@@ -168,10 +157,9 @@ The Arduino sends status messages back to the app:
 ## Compatible Hardware
 
 ### Tested Motor Drivers
-- L298N Dual H-Bridge
-- L293D Motor Shield
-- TB6612FNG Motor Driver
-- Direct connection (small motors only)
+- L9110 2-Channel Motor Driver (optimized for this)
+- L298N Dual H-Bridge (with pin changes)
+- L293D Motor Shield (with pin changes)
 
 ### Tested Arduino Boards
 - Arduino Uno R3
@@ -182,5 +170,6 @@ The Arduino sends status messages back to the app:
 ## Power Requirements
 
 - **Arduino**: 5V via USB or external supply
-- **Motors**: 6-12V depending on motor specifications
-- **Current**: Ensure motor driver can handle your motor current draw
+- **L9110**: 2.5-12V motor supply (VMS pin)
+- **Motors**: Match L9110 voltage rating (typically 6-12V)
+- **Current**: L9110 can handle up to 800mA per channel
